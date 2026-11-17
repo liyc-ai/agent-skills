@@ -5,9 +5,9 @@
 ## 目录结构
 
 ```text
-AGENTS.md                 # 全局偏好，软链到 ~/.codex/AGENTS.md
 setup/
 ├── codex/
+│   ├── AGENTS.md         # 全局偏好，软链到 ~/.codex/AGENTS.md
 │   ├── config-yolo-mode/
 │   └── config-codex-tui-scrollback/
 └── tmux/
@@ -20,18 +20,19 @@ setup/
 
 ## 全局偏好（AGENTS.md）
 
-仓库根目录的 `AGENTS.md` 是全局偏好的唯一副本，`~/.codex/AGENTS.md` 是指向它
+`setup/codex/AGENTS.md` 是全局偏好的唯一副本，`~/.codex/AGENTS.md` 是指向它
 的软链。改偏好直接改仓库里的文件，Git 会记录每次变更：
 
 ```bash
 # 首次建立软链
 cp ~/.codex/AGENTS.md ~/.codex/AGENTS.md.bak
 rm ~/.codex/AGENTS.md
-ln -s "$HOME/Documents/Code/agent-skills/AGENTS.md" ~/.codex/AGENTS.md
+ln -s "$HOME/Documents/Code/agent-skills/setup/codex/AGENTS.md" ~/.codex/AGENTS.md
 ```
 
-注意：仓库内运行 Codex 时，这份文件也会作为项目级指令被读一次。内容相同，
-不会冲突，只是重复。
+放在 `setup/codex/` 而不是仓库根目录，是因为根目录的 `AGENTS.md` 会被当成
+项目级指令再读一遍；子目录里的同名文件只有把工作目录切进去才会加载，所以
+不会重复。
 
 ## Skills
 
@@ -61,7 +62,7 @@ ln -s "$HOME/Documents/Code/agent-skills" \
   "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills"
 
 # 3. 软链全局偏好
-ln -s "$HOME/Documents/Code/agent-skills/AGENTS.md" \
+ln -s "$HOME/Documents/Code/agent-skills/setup/codex/AGENTS.md" \
   "${CODEX_HOME:-$HOME/.codex}/AGENTS.md"
 ```
 
