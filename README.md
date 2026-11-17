@@ -5,6 +5,7 @@
 ## 目录结构
 
 ```text
+AGENTS.md                 # 全局偏好，软链到 ~/.codex/AGENTS.md
 setup/
 ├── codex/
 │   ├── config-yolo-mode/
@@ -16,6 +17,21 @@ setup/
 `setup/<tool>/<skill-name>/SKILL.md` 是一个完整 skill。Codex 会递归扫描
 `~/.codex/skills` 下的 `SKILL.md`（已在 codex-cli 0.169.0 验证），所以不需要
 把层级拍平。
+
+## 全局偏好（AGENTS.md）
+
+仓库根目录的 `AGENTS.md` 是全局偏好的唯一副本，`~/.codex/AGENTS.md` 是指向它
+的软链。改偏好直接改仓库里的文件，Git 会记录每次变更：
+
+```bash
+# 首次建立软链
+cp ~/.codex/AGENTS.md ~/.codex/AGENTS.md.bak
+rm ~/.codex/AGENTS.md
+ln -s "$HOME/Documents/Code/agent-skills/AGENTS.md" ~/.codex/AGENTS.md
+```
+
+注意：仓库内运行 Codex 时，这份文件也会作为项目级指令被读一次。内容相同，
+不会冲突，只是重复。
 
 ## Skills
 
@@ -43,6 +59,10 @@ git clone https://github.com/liyc-ai/agent-skills.git \
 mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
 ln -s "$HOME/Documents/Code/agent-skills" \
   "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills"
+
+# 3. 软链全局偏好
+ln -s "$HOME/Documents/Code/agent-skills/AGENTS.md" \
+  "${CODEX_HOME:-$HOME/.codex}/AGENTS.md"
 ```
 
 如果目标位置已经存在，先备份再建立软链：
@@ -50,6 +70,9 @@ ln -s "$HOME/Documents/Code/agent-skills" \
 ```bash
 mv "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills" \
    "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills.bak"
+
+mv "${CODEX_HOME:-$HOME/.codex}/AGENTS.md" \
+   "${CODEX_HOME:-$HOME/.codex}/AGENTS.md.bak"
 ```
 
 也可以直接 clone 进 skills 目录，效果相同：
