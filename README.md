@@ -6,8 +6,8 @@
 ## 目录结构
 
 ```text
+AGENTS.GLOBAL.md                # 全局偏好，Codex/Claude 共用一份
 setup/
-├── preferences.md              # 全局偏好，Codex/Claude 共用一份
 ├── codex/
 │   ├── config-yolo-mode/
 │   └── config-codex-tui-scrollback/
@@ -21,12 +21,13 @@ setup/
 
 ## 全局偏好
 
-`setup/preferences.md` 是全局偏好的唯一副本。Codex 通过 `~/.codex/AGENTS.md`
+`AGENTS.GLOBAL.md` 是全局偏好的唯一副本。Codex 通过 `~/.codex/AGENTS.md`
 读取，Claude Code 通过 `~/.claude/CLAUDE.md` 读取；两条软链都指向这个文件，
 改一处两边都生效。
 
-放在 `setup/` 而不是仓库根目录，是因为根目录的 `AGENTS.md` / `CLAUDE.md`
-会被各自工具当成项目级指令再读一遍。
+文件放在仓库根目录，但特意用了 `AGENTS.GLOBAL.md` 这个名字：Codex 只认
+`AGENTS.md`，Claude Code 认 `AGENTS.md` / `CLAUDE.md`，所以它不会被当成
+项目级指令自动加载；只有软链过去的两个名字会被读取。
 
 Claude Code 2.1.277+ 也支持项目里的 `AGENTS.md`，但用户级全局偏好仍然是
 `~/.claude/CLAUDE.md`；`~/.codex/AGENTS.md` 不会被 Claude Code 读取。
@@ -76,7 +77,7 @@ Codex 会递归扫描 `~/.codex/skills` 下的 `SKILL.md`（已在 codex-cli 0.1
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
 mkdir -p "$CODEX_DIR/skills"
 ln -s "$REPO" "$CODEX_DIR/skills/agent-skills"
-ln -s "$REPO/setup/preferences.md" "$CODEX_DIR/AGENTS.md"
+ln -s "$REPO/AGENTS.GLOBAL.md" "$CODEX_DIR/AGENTS.md"
 ```
 
 如果想让 Codex 侧也保持和 Claude 一样的扁平结构，可以改成逐个软链：
@@ -102,7 +103,7 @@ for f in "$REPO"/setup/*/*/SKILL.md; do
   src=$(dirname "$f")
   ln -sfn "$src" "$CLAUDE_DIR/skills/$(basename "$src")"
 done
-ln -s "$REPO/setup/preferences.md" "$CLAUDE_DIR/CLAUDE.md"
+ln -s "$REPO/AGENTS.GLOBAL.md" "$CLAUDE_DIR/CLAUDE.md"
 ```
 
 以后新增 skill 时，重跑上面的循环（或只补一条 `ln -sfn`）即可。
@@ -188,7 +189,7 @@ Claude Code 侧没有独立的裸 skill 校验命令，装好后用 `/skills` �
 - Claude Code 的个人 skill 只扫描一层目录，仓库根软链不会生效；`~/.claude`
   下要放的是每个 skill 目录本身。
 - `~/.codex/AGENTS.md` 只给 Codex 用；Claude Code 的用户级文件是
-  `~/.claude/CLAUDE.md`，两者都指向 `setup/preferences.md`。
+  `~/.claude/CLAUDE.md`，两者都指向 `AGENTS.GLOBAL.md`。
 - Cowork 桌面会话会跳过本身是软链的 `~/.claude/CLAUDE.md`；普通终端会话不受
   影响。
 - 删除软链不会删除仓库：
