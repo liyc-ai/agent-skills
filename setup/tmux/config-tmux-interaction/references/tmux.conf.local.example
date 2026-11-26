@@ -1,0 +1,98 @@
+# ============================================================
+# oh-my-tmux 交互增强
+#
+# 用法：整段追加到 ~/.tmux.conf.local 末尾，然后在 tmux 里按
+#       <prefix> r 重载。
+#
+# 后出现的赋值会覆盖官方示例文件里的默认值，所以不需要回头
+# 去改上面的 tmux_conf_* 行。
+#
+# 已在 tmux 3.8 + oh-my-tmux master (58a3dcc) + macOS 验证。
+# Linux 把两处 "pbcopy" 换成 xclip -selection clipboard 或 wl-copy。
+# ============================================================
+
+# ------------------------------------------------------------------
+# oh-my-tmux 变量
+# ------------------------------------------------------------------
+
+# copy-mode 里复制时写入系统剪贴板（macOS 自动用 pbcopy）
+tmux_conf_copy_to_os_clipboard=true
+
+# 新窗口 / 新 pane 沿用当前目录。
+# 必须打开：oh-my-tmux 加载时会规范化 new-window 绑定，
+# 不打开的话自定义绑定里的 -c "#{pane_current_path}" 会被去掉。
+tmux_conf_new_window_retain_current_path=true
+
+
+# ------------------------------------------------------------------
+# 基础选项
+# ------------------------------------------------------------------
+
+# 回滚缓冲（默认 5000）
+set -g history-limit 100000
+
+# oh-my-tmux 的复制键位写在 copy-mode-vi 表里，只有 vi 模式生效。
+# 也可以改成导出 VISUAL 或 EDITOR=vim。
+set -g mode-keys vi
+set -g status-keys vi
+
+# OSC 52 剪贴板（可选；macOS 上最确定的路径仍是下面的 pbcopy）
+set -g set-clipboard on
+
+# tmux 3.8 默认 mouse on；旧版本如果 show-options 显示 off，取消注释：
+#set -g mouse on
+
+
+# ------------------------------------------------------------------
+# 复制到系统剪贴板
+# ------------------------------------------------------------------
+
+# Enter 也复制（oh-my-tmux 默认只给 y 绑定复制）
+bind -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "pbcopy"
+
+# 鼠标拖选松开即复制（不依赖 Enter）
+bind -T copy-mode-vi MouseDragEnd1Pane \
+	send-keys -X copy-pipe-and-cancel "pbcopy"
+
+
+# ------------------------------------------------------------------
+# 新窗口提示命名
+# ------------------------------------------------------------------
+
+# prefix + c：在当前目录新建窗口，底部提示「窗口名称:」
+# 默认值是当前目录名，直接 Enter 使用；先按 C-u 可清空默认值。
+# 注意：-c 由 tmux_conf_new_window_retain_current_path=true 统一加回，
+# 这里不要再写 -c，否则会在加载时被规范化掉。
+bind c new-window \; \
+	command-prompt -p "窗口名称:" -I "#{b:pane_current_path}" \
+	"rename-window -- '%%'"
+
+
+# ------------------------------------------------------------------
+# Codex 等 inline TUI 的误触保护
+# ------------------------------------------------------------------
+# Codex 不接管鼠标，点输入框时误拖/双击会被 tmux 当成选区并直接
+# 复制，覆盖系统剪贴板。这里只屏蔽 codex pane 底部 5 行（输入框和
+# 状态栏），正文照常拖选/双击复制；底部 5 行想选时先滚轮上翻进
+# copy-mode。-5 可按实际输入框高度调整，其他 pane 不受影响。
+#
+# 如果 Codex 通过包装脚本启动，pane_current_command 可能显示成
+# node / python，把 "codex" 换成实际命令名即可。
+
+bind -n MouseDrag1Pane if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' \
+	{ send-keys -M } \
+	{ if -F '#{&&:#{==:#{pane_current_command},codex},#{>=:#{mouse_y},#{e|+|:#{pane_height},-5}}}' \
+		{ select-pane -t = } \
+		{ copy-mode -M } }
+
+bind -n DoubleClick1Pane select-pane -t = \; \
+	if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send-keys -M } \
+	{ if -F '#{&&:#{==:#{pane_current_command},codex},#{>=:#{mouse_y},#{e|+|:#{pane_height},-5}}}' \
+		{ select-pane -t = } \
+		{ copy-mode -H ; send-keys -X select-word ; run-shell -d 0.3 ; send-keys -X copy-pipe-and-cancel } }
+
+bind -n TripleClick1Pane select-pane -t = \; \
+	if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send-keys -M } \
+	{ if -F '#{&&:#{==:#{pane_current_command},codex},#{>=:#{mouse_y},#{e|+|:#{pane_height},-5}}}' \
+		{ select-pane -t = } \
+		{ copy-mode -H ; send-keys -X select-line ; run-shell -d 0.3 ; send-keys -X copy-pipe-and-cancel } }

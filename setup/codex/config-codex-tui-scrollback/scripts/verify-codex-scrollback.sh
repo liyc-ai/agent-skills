@@ -9,44 +9,51 @@ fi
 
 echo "== codex =="
 codex --version 2>/dev/null | head -1
+if codex --help 2>/dev/null | grep -q -- '--no-alt-screen'; then
+	echo "CLI: --no-alt-screen available"
+else
+	echo "CLI: --no-alt-screen NOT found (check codex version)"
+fi
 
 echo
 echo "== config =="
-python3 - <<'PY'
-import os
-import pathlib
-import sys
+home="${CODEX_HOME:-$HOME/.codex}"
+path="$home/config.toml"
+echo "config: $path"
 
-try:
-    import tomllib
-except ImportError:
-    print("error: Python 3.11+ is required for tomllib", file=sys.stderr)
-    raise SystemExit(2)
+if [ ! -f "$path" ]; then
+	echo "missing config.toml"
+else
+	# Read only the [tui] table; avoids depending on Python 3.11+ / tomllib.
+	value=$(awk '
+		/^[[:space:]]*\[/ { in_tui = ($0 ~ /^[[:space:]]*\[tui\][[:space:]]*$/); next }
+		in_tui && /^[[:space:]]*alternate_screen[[:space:]]*=/ {
+			line = $0
+			sub(/^[^=]*=[[:space:]]*/, "", line)
+			sub(/[[:space:]]*#.*$/, "", line)
+			gsub(/"/, "", line)
+			print line
+			exit
+		}
+	' "$path")
+	value="${value:-<unset>}"
+	printf 'tui.alternate_screen = %s\n' "$value"
 
-home = pathlib.Path(os.environ.get("CODEX_HOME", pathlib.Path.home() / ".codex"))
-path = home / "config.toml"
-print(f"config: {path}")
-
-if not path.exists():
-    print("missing config.toml")
-    raise SystemExit(0)
-
-try:
-    config = tomllib.loads(path.read_text())
-except Exception as exc:
-    print(f"parse error: {exc}", file=sys.stderr)
-    raise SystemExit(1)
-
-value = config.get("tui", {}).get("alternate_screen", "<unset>")
-print(f"tui.alternate_screen = {value!r}")
-
-if value == "never":
-    print("OK: new Codex sessions will use inline mode (terminal scrollback).")
-elif value == "always":
-    print("NOTE: alternate screen is forced; use Ctrl+T for long transcripts.")
-else:
-    print("NOTE: using Codex default; use Ctrl+T if tmux cannot scroll back.")
-PY
+	case "$value" in
+		never)
+			echo "OK: new Codex sessions will use inline mode (terminal scrollback)."
+			;;
+		always)
+			echo "NOTE: alternate screen is forced; use Ctrl+T for long transcripts."
+			;;
+		"<unset>")
+			echo "NOTE: using Codex default; use Ctrl+T if tmux cannot scroll back."
+			;;
+		*)
+			echo "NOTE: unrecognized value; check Codex config docs."
+			;;
+	esac
+fi
 
 if command -v tmux >/dev/null 2>&1; then
 	echo
@@ -66,4 +73,8 @@ Inside Codex:
   PgUp/PgDn, Home/End
   f3       find
   q        close
+
+Note: oh-my-tmux can make inline-mode scrollback selectable/copyable, but it
+cannot record alternate-screen content. alternate_screen = "never" (or
+--no-alt-screen) is still required for tmux to see the full transcript.
 EOF

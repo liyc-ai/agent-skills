@@ -40,7 +40,7 @@ ln -s "$HOME/Documents/Code/agent-skills/setup/codex/AGENTS.md" ~/.codex/AGENTS.
 | --- | --- | --- |
 | `config-yolo-mode` | [setup/codex/config-yolo-mode](setup/codex/config-yolo-mode/SKILL.md) | 把 Codex 默认权限设为全权限（YOLO mode），或恢复/缩小权限并校验实际生效值。 |
 | `config-codex-tui-scrollback` | [setup/codex/config-codex-tui-scrollback](setup/codex/config-codex-tui-scrollback/SKILL.md) | 解决 Codex TUI 在 tmux 中无法回看长会话的问题：`Ctrl+T` transcript pager 或 `alternate_screen = "never"`。 |
-| `config-tmux-interaction` | [setup/tmux/config-tmux-interaction](setup/tmux/config-tmux-interaction/SKILL.md) | 配置 tmux 新窗口命名、鼠标/触摸板滚动、选中内容 + Enter 复制到系统剪贴板，并排查多行复制问题。 |
+| `config-tmux-interaction` | [setup/tmux/config-tmux-interaction](setup/tmux/config-tmux-interaction/SKILL.md) | 安装/升级 oh-my-tmux（gpakosz/.tmux），并在 `.tmux.conf.local` 中补齐新窗口命名、鼠标滚动、剪贴板复制、Codex TUI 误触防护与排查。 |
 
 ## 安装到另一台电脑
 
