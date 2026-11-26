@@ -1,90 +1,119 @@
 # agent-skills
 
-我维护的 Codex skills 集合，按工具和场景分层放置。
+我维护的个人 skills 集合，Codex CLI 和 Claude Code 共用。每个 skill 都是一个
+独立的 `SKILL.md` 目录，按工具和场景分层放置。
 
 ## 目录结构
 
 ```text
 setup/
+├── preferences.md              # 全局偏好，Codex/Claude 共用一份
 ├── codex/
-│   ├── AGENTS.md         # 全局偏好，软链到 ~/.codex/AGENTS.md
 │   ├── config-yolo-mode/
 │   └── config-codex-tui-scrollback/
 └── tmux/
-    └── config-tmux-interaction/
+    └── config-tmux-interaction/   # 场景目录，两个客户端通用
 ```
 
-`setup/<tool>/<skill-name>/SKILL.md` 是一个完整 skill。Codex 会递归扫描
-`~/.codex/skills` 下的 `SKILL.md`（已在 codex-cli 0.169.0 验证），所以不需要
-把层级拍平。
+`setup/<tool>/<skill-name>/SKILL.md` 放工具专用的 skill；
+`setup/<scenario>/<skill-name>/SKILL.md` 放跨工具的场景化 skill。两者都用通用
+的 `SKILL.md` 格式，所以同一份文件可以被 Codex 和 Claude Code 加载。
 
-## 全局偏好（AGENTS.md）
+## 全局偏好
 
-`setup/codex/AGENTS.md` 是全局偏好的唯一副本，`~/.codex/AGENTS.md` 是指向它
-的软链。改偏好直接改仓库里的文件，Git 会记录每次变更：
+`setup/preferences.md` 是全局偏好的唯一副本。Codex 通过 `~/.codex/AGENTS.md`
+读取，Claude Code 通过 `~/.claude/CLAUDE.md` 读取；两条软链都指向这个文件，
+改一处两边都生效。
 
-```bash
-# 首次建立软链
-cp ~/.codex/AGENTS.md ~/.codex/AGENTS.md.bak
-rm ~/.codex/AGENTS.md
-ln -s "$HOME/Documents/Code/agent-skills/setup/codex/AGENTS.md" ~/.codex/AGENTS.md
-```
+放在 `setup/` 而不是仓库根目录，是因为根目录的 `AGENTS.md` / `CLAUDE.md`
+会被各自工具当成项目级指令再读一遍。
 
-放在 `setup/codex/` 而不是仓库根目录，是因为根目录的 `AGENTS.md` 会被当成
-项目级指令再读一遍；子目录里的同名文件只有把工作目录切进去才会加载，所以
-不会重复。
+Claude Code 2.1.277+ 也支持项目里的 `AGENTS.md`，但用户级全局偏好仍然是
+`~/.claude/CLAUDE.md`；`~/.codex/AGENTS.md` 不会被 Claude Code 读取。
 
 ## Skills
 
-| Skill | 路径 | 用途 |
-| --- | --- | --- |
-| `config-yolo-mode` | [setup/codex/config-yolo-mode](setup/codex/config-yolo-mode/SKILL.md) | 把 Codex 默认权限设为全权限（YOLO mode），或恢复/缩小权限并校验实际生效值。 |
-| `config-codex-tui-scrollback` | [setup/codex/config-codex-tui-scrollback](setup/codex/config-codex-tui-scrollback/SKILL.md) | 解决 Codex TUI 在 tmux 中无法回看长会话的问题：`Ctrl+T` transcript pager 或 `alternate_screen = "never"`。 |
-| `config-tmux-interaction` | [setup/tmux/config-tmux-interaction](setup/tmux/config-tmux-interaction/SKILL.md) | 安装/升级 oh-my-tmux（gpakosz/.tmux），并在 `.tmux.conf.local` 中补齐新窗口命名、鼠标滚动、剪贴板复制、Codex TUI 误触防护与排查。 |
+| Skill | 路径 | 适用 | 用途 |
+| --- | --- | --- | --- |
+| `config-yolo-mode` | [setup/codex/config-yolo-mode](setup/codex/config-yolo-mode/SKILL.md) | Codex | 把 Codex 默认权限设为全权限（YOLO mode），或恢复/缩小权限并校验实际生效值。 |
+| `config-codex-tui-scrollback` | [setup/codex/config-codex-tui-scrollback](setup/codex/config-codex-tui-scrollback/SKILL.md) | Codex | 解决 Codex TUI 在 tmux 中无法回看长会话的问题：`Ctrl+T` transcript pager 或 `alternate_screen = "never"`。 |
+| `config-tmux-interaction` | [setup/tmux/config-tmux-interaction](setup/tmux/config-tmux-interaction/SKILL.md) | Codex / Claude Code | 安装/升级 oh-my-tmux，并在 `.tmux.conf.local` 中补齐新窗口命名、鼠标滚动、剪贴板复制与 TUI 误触防护。 |
 
-## 安装到另一台电脑
+格式对两个工具都通用，但前两个 skill 的内容本身是 Codex 专用的。
 
-推荐把仓库 clone 到普通代码目录，再把**仓库根目录**软链到 Codex 的
-skills 目录：
+## 安装
+
+先 clone 仓库，后面的命令都用这个路径：
 
 ```bash
-# 1. clone
-git clone https://github.com/liyc-ai/agent-skills.git \
-  "$HOME/Documents/Code/agent-skills"
+REPO="$HOME/Documents/Code/agent-skills"
+git clone https://github.com/liyc-ai/agent-skills.git "$REPO"
 
 # 也可以用 SSH
-# git clone git@github.com:liyc-ai/agent-skills.git \
-#   "$HOME/Documents/Code/agent-skills"
-
-# 2. 软链整个仓库
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -s "$HOME/Documents/Code/agent-skills" \
-  "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills"
-
-# 3. 软链全局偏好
-ln -s "$HOME/Documents/Code/agent-skills/setup/codex/AGENTS.md" \
-  "${CODEX_HOME:-$HOME/.codex}/AGENTS.md"
+# git clone git@github.com:liyc-ai/agent-skills.git "$REPO"
 ```
 
-如果目标位置已经存在，先备份再建立软链：
+后面的命令都假设 `REPO` 还在当前 shell 里。
+
+如果目标位置已经有同名文件或软链，先备份再建链接：
 
 ```bash
-mv "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills" \
-   "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills.bak"
-
-mv "${CODEX_HOME:-$HOME/.codex}/AGENTS.md" \
-   "${CODEX_HOME:-$HOME/.codex}/AGENTS.md.bak"
+# 只对已存在的项执行
+mv ~/.codex/AGENTS.md ~/.codex/AGENTS.md.bak
+mv ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak
+mv ~/.codex/skills/agent-skills ~/.codex/skills/agent-skills.bak
+mv ~/.claude/skills/config-yolo-mode ~/.claude/skills/config-yolo-mode.bak
+mv ~/.claude/skills/config-codex-tui-scrollback ~/.claude/skills/config-codex-tui-scrollback.bak
+mv ~/.claude/skills/config-tmux-interaction ~/.claude/skills/config-tmux-interaction.bak
 ```
 
-也可以直接 clone 进 skills 目录，效果相同：
+### Codex CLI
+
+Codex 会递归扫描 `~/.codex/skills` 下的 `SKILL.md`（已在 codex-cli 0.169.0
+验证），所以链接一次仓库根目录就够了：
 
 ```bash
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-git clone https://github.com/liyc-ai/agent-skills.git \
-  "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills"
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
+mkdir -p "$CODEX_DIR/skills"
+ln -s "$REPO" "$CODEX_DIR/skills/agent-skills"
+ln -s "$REPO/setup/preferences.md" "$CODEX_DIR/AGENTS.md"
 ```
 
-Windows 可以使用目录 junction：
+如果想让 Codex 侧也保持和 Claude 一样的扁平结构，可以改成逐个软链：
+
+```bash
+for f in "$REPO"/setup/*/*/SKILL.md; do
+  src=$(dirname "$f")
+  ln -sfn "$src" "$CODEX_DIR/skills/$(basename "$src")"
+done
+```
+
+### Claude Code
+
+Claude Code 只扫描 `~/.claude/skills/<skill-name>/SKILL.md` 这一层，**不会
+递归**。把整个仓库软链成 `~/.claude/skills/agent-skills` 时，顶层没有
+`SKILL.md`，里面的 skill 不会被发现；所以要逐个软链，不过软链的 skill 目录
+本身会被正常跟随（Claude Code 2.1.332 验证）：
+
+```bash
+CLAUDE_DIR="$HOME/.claude"
+mkdir -p "$CLAUDE_DIR/skills"
+for f in "$REPO"/setup/*/*/SKILL.md; do
+  src=$(dirname "$f")
+  ln -sfn "$src" "$CLAUDE_DIR/skills/$(basename "$src")"
+done
+ln -s "$REPO/setup/preferences.md" "$CLAUDE_DIR/CLAUDE.md"
+```
+
+以后新增 skill 时，重跑上面的循环（或只补一条 `ln -sfn`）即可。
+
+如果以后想把 agents、hooks、MCP 也一起打包，可以在仓库根加
+`.claude-plugin/plugin.json`，改用 Claude Code 的插件方式安装；现在只装
+skills 的话，逐个软链就够了。
+
+### Windows
+
+Windows 用目录 junction。Codex 侧可以 junction 整个仓库：
 
 ```powershell
 New-Item -ItemType Junction `
@@ -92,59 +121,81 @@ New-Item -ItemType Junction `
   -Target "$env:USERPROFILE\Documents\Code\agent-skills"
 ```
 
+Claude 侧不能 junction 整个仓库，需要给每个 skill 单独建 junction，例如：
+
+```powershell
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.claude\skills\config-tmux-interaction" `
+  -Target "$env:USERPROFILE\Documents\Code\agent-skills\setup\tmux\config-tmux-interaction"
+```
+
 ## 验证安装
 
-```bash
-ls -l "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills"
+### Codex
 
+```bash
 codex debug prompt-input 'hi' \
-  | grep -oE 'file: r0/agent-skills/[^)]*SKILL.md' \
+  | grep -oE 'file: [^)]*(config-yolo-mode|config-codex-tui-scrollback|config-tmux-interaction)/SKILL.md' \
   | sed 's/^file: //' \
   | sort -u
 ```
 
-预期能看到三个 skill 的 `SKILL.md` 路径，例如：
+预期能看到三个 `SKILL.md` 路径。
+
+### Claude Code
+
+新开一个 Claude Code 会话，然后：
 
 ```text
-r0/agent-skills/setup/codex/config-codex-tui-scrollback/SKILL.md
-r0/agent-skills/setup/codex/config-yolo-mode/SKILL.md
-r0/agent-skills/setup/tmux/config-tmux-interaction/SKILL.md
+/skills      # 应看到三个 skill，名字与目录名一致
+/memory      # 应看到 ~/.claude/CLAUDE.md
 ```
 
-`codex debug prompt-input` 只渲染 prompt，不调用模型。skill 在会话启动时加载；
-安装或更新后请新开 Codex 会话。
+`/reload-skills` 可以强制重新扫描 `~/.claude/skills`，安装或改动 skill 后
+不用重启会话。
 
 ## 更新
 
 ```bash
-git -C "$HOME/Documents/Code/agent-skills" pull --ff-only
+git -C "$REPO" pull --ff-only
 ```
 
-然后新开 Codex 会话即可。软链指向仓库工作区，不需要重新复制文件。
-
-如果采用直接 clone 到 skills 目录的方式，把上面的路径换成
-`${CODEX_HOME:-$HOME/.codex}/skills/agent-skills`。
+软链指向仓库工作区，不需要重新复制文件。skill 文本会被 Claude Code 监听，
+也可以用 `/reload-skills` 强制重扫；`AGENTS.md` / `CLAUDE.md` 的改动新开一个
+会话最稳。
 
 ## 新增 skill 约定
 
-1. 按 `setup/<tool>/<skill-name>/` 建目录。
-2. `SKILL.md` 的 frontmatter `name` 与目录名保持一致，并确保全局唯一。
+1. 工具专用 skill 放 `setup/<tool>/<skill-name>/`，跨工具 skill 放
+   `setup/<scenario>/<skill-name>/`。
+2. `SKILL.md` 的 frontmatter `name` 与目录名保持一致，并确保全局唯一；
+   `description` 写清楚触发场景。
 3. 只在确实需要时添加 `scripts/`、`references/`、`assets/`。
-4. 用 skill-creator 的校验脚本检查：
+4. 用 skill-creator 的校验脚本检查（如果本机装了）：
 
 ```bash
 python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" \
   "setup/<tool>/<skill-name>"
 ```
 
+Claude Code 侧没有独立的裸 skill 校验命令，装好后用 `/skills` 看是否被发现
+即可。
+
 ## 注意
 
-- 不要把个人 skill 放进 `~/.codex/skills/.system/`；`.system` 是系统 skill 的位置。
-- Codex 使用 `SKILL.md` 的 `name` 作为 skill 标识；同级路径不会改变名称。
+- 不要把个人 skill 放进 `~/.codex/skills/.system/`；`.system` 是 Codex 系统
+  skill 的位置。
+- Claude Code 的个人 skill 只扫描一层目录，仓库根软链不会生效；`~/.claude`
+  下要放的是每个 skill 目录本身。
+- `~/.codex/AGENTS.md` 只给 Codex 用；Claude Code 的用户级文件是
+  `~/.claude/CLAUDE.md`，两者都指向 `setup/preferences.md`。
+- Cowork 桌面会话会跳过本身是软链的 `~/.claude/CLAUDE.md`；普通终端会话不受
+  影响。
 - 删除软链不会删除仓库：
 
   ```bash
   unlink "${CODEX_HOME:-$HOME/.codex}/skills/agent-skills"
+  unlink ~/.claude/skills/config-tmux-interaction
   ```
 
 ## License
