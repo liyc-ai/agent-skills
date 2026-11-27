@@ -25,17 +25,18 @@ knowledge/
 `setup/<scenario>/<skill-name>/SKILL.md` 放跨工具的场景化 skill。两者都用通用
 的 `SKILL.md` 格式，所以同一份文件可以被 Codex 和 Claude Code 加载。
 
-## 全局偏好
+## 全局指令
 
-`AGENTS.GLOBAL.md` 是全局偏好的唯一副本。Codex 通过 `~/.codex/AGENTS.md`
-读取，Claude Code 通过 `~/.claude/CLAUDE.md` 读取；两条软链都指向这个文件，
-改一处两边都生效。
+`AGENTS.GLOBAL.md` 是全局指令的唯一副本，目前包括任务执行规范（验收标准、
+任务拆分、卡住时停下来提问）、中文表达、学术写作和 Git/GitHub 环境约定。
+Codex 通过 `~/.codex/AGENTS.md` 读取，Claude Code 通过 `~/.claude/CLAUDE.md`
+读取；两条软链都指向这个文件，改一处两边都生效。
 
 文件放在仓库根目录，但特意用了 `AGENTS.GLOBAL.md` 这个名字：Codex 只认
 `AGENTS.md`，Claude Code 认 `AGENTS.md` / `CLAUDE.md`，所以它不会被当成
 项目级指令自动加载；只有软链过去的两个名字会被读取。
 
-Claude Code 2.1.277+ 也支持项目里的 `AGENTS.md`，但用户级全局偏好仍然是
+Claude Code 2.1.277+ 也支持项目里的 `AGENTS.md`，但用户级全局指令仍然是
 `~/.claude/CLAUDE.md`；`~/.codex/AGENTS.md` 不会被 Claude Code 读取。
 
 ## Skills
