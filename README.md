@@ -6,7 +6,7 @@
 ## 目录结构
 
 ```text
-AGENTS.GLOBAL.md                # 全局偏好，Codex/Claude 共用一份
+AGENTS.GLOBAL.md                # 全局指令，Codex/Claude 共用一份
 setup/
 ├── claude/
 │   ├── config-auto-mode/

@@ -1,21 +1,21 @@
-# Global preferences
+# Global Agent Instructions
 
-## Git / GitHub
+Codex 和 Claude Code 共用的一份全局指令，只放跨项目、跨任务都适用的约定。
 
-- In this environment, HTTPS access to `github.com:443` times out.
-- Prefer SSH for GitHub git operations. SSH authentication to
-  `git@github.com` works.
-- Do not wait on an HTTPS `origin`. If a repository still uses one, either
-  use a one-off rewrite:
+## 任务执行
 
-  ```bash
-  git -c url."git@github.com:".insteadOf="https://github.com/" push origin <branch>
-  ```
-
-  or switch the remote to `git@github.com:<owner>/<repo>.git`.
-- The global Git config also rewrites `https://github.com/` to
-  `git@github.com:`, so normal `git push` / `git fetch` should use SSH
-  automatically.
+- 接到不太简单的任务时，先想清楚"什么算做完"，把判断标准说出来；能写成测试、
+  检查项或可对比的产出的，就先写出来。没有可验证的标准，就先跟用户确认，不要
+  一边做一边改目标。
+- 任务里包含多个独立的子问题时，先拆成几步并说明顺序，再一步步做。不要把用户
+  没要求、只是看起来相关的东西顺手一起处理。
+- 同一件事连续两次尝试没有进展，或者连续两次探索没有拿到新信息，就停下来，用
+  几句话说明当前的假设、试过什么、卡在哪，把下一步交给用户决定。停下来汇报不是
+  失败，继续空转才是。
+- 需求或范围不清楚时先问。用户没指定看哪些文件、改哪些部分时，先确认范围再动手，
+  不要靠猜。
+- 不要复述需求和显然的步骤。有答案就直接给，要动手就直接动手；需要计划时简短列
+  几步就开始，做完再说改了什么。
 
 ## 中文表达
 
@@ -50,3 +50,20 @@
   这句话会不会招来审稿人追问；如果会，自己能不能用一两句话回答。一旦不好回答，
   就调整写法：换成更中性的表述，或移到图注、limitations、supplementary，不要
   放在正文最显眼的位置。不是隐瞒数据，而是不让正文主动制造自己回答不了的问题。
+
+## Git / GitHub
+
+- In this environment, HTTPS access to `github.com:443` times out.
+- Prefer SSH for GitHub git operations. SSH authentication to
+  `git@github.com` works.
+- Do not wait on an HTTPS `origin`. If a repository still uses one, either
+  use a one-off rewrite:
+
+  ```bash
+  git -c url."git@github.com:".insteadOf="https://github.com/" push origin <branch>
+  ```
+
+  or switch the remote to `git@github.com:<owner>/<repo>.git`.
+- The global Git config also rewrites `https://github.com/` to
+  `git@github.com:`, so normal `git push` / `git fetch` should use SSH
+  automatically.
