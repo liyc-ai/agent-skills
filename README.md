@@ -7,6 +7,7 @@
 
 ```text
 AGENTS.GLOBAL.md                # 全局指令，Codex/Claude 共用一份
+AGENTS.md                       # 仓库级指令，修改本仓库时的提交与 README 同步约定
 setup/
 ├── claude/
 │   ├── config-auto-mode/
@@ -38,6 +39,16 @@ Codex 通过 `~/.codex/AGENTS.md` 读取，Claude Code 通过 `~/.claude/CLAUDE.
 
 Claude Code 2.1.277+ 也支持项目里的 `AGENTS.md`，但用户级全局指令仍然是
 `~/.claude/CLAUDE.md`；`~/.codex/AGENTS.md` 不会被 Claude Code 读取。
+
+## 仓库级指令
+
+根目录的 `AGENTS.md` 是项目级指令，和上面的全局指令不同，它会被 Codex 和
+Claude Code 自动加载，只在本仓库生效。目前约定两件事：
+
+- 不要新建分支，直接在 `main` 上 commit。
+- 改完内容后同步更新 `README.md`（目录树、Skills 表格、安装命令、验证数量等）。
+
+具体条目见 [AGENTS.md](AGENTS.md)。
 
 ## Skills
 
