@@ -8,6 +8,8 @@
 ```text
 AGENTS.GLOBAL.md                # 全局偏好，Codex/Claude 共用一份
 setup/
+├── claude/
+│   └── config-auto-mode/
 ├── codex/
 │   ├── config-yolo-mode/
 │   └── config-codex-tui-scrollback/
@@ -38,9 +40,10 @@ Claude Code 2.1.277+ 也支持项目里的 `AGENTS.md`，但用户级全局偏�
 | --- | --- | --- | --- |
 | `config-yolo-mode` | [setup/codex/config-yolo-mode](setup/codex/config-yolo-mode/SKILL.md) | Codex | 把 Codex 默认权限设为全权限（YOLO mode），或恢复/缩小权限并校验实际生效值。 |
 | `config-codex-tui-scrollback` | [setup/codex/config-codex-tui-scrollback](setup/codex/config-codex-tui-scrollback/SKILL.md) | Codex | 解决 Codex TUI 在 tmux 中无法回看长会话的问题：`Ctrl+T` transcript pager 或 `alternate_screen = "never"`。 |
+| `config-auto-mode` | [setup/claude/config-auto-mode](setup/claude/config-auto-mode/SKILL.md) | Claude Code | 把 Claude Code 默认权限模式改为 auto mode（分类器逐个判断），或恢复/校验默认模式。 |
 | `config-tmux-interaction` | [setup/tmux/config-tmux-interaction](setup/tmux/config-tmux-interaction/SKILL.md) | Codex / Claude Code | 安装/升级 oh-my-tmux，并在 `.tmux.conf.local` 中补齐新窗口命名、鼠标滚动、剪贴板复制与 TUI 误触防护。 |
 
-格式对两个工具都通用，但前两个 skill 的内容本身是 Codex 专用的。
+格式对两个工具都通用；前两个 Codex skill 和 `config-auto-mode` 的内容本身是各自工具专用的。
 
 ## 安装
 
@@ -65,6 +68,7 @@ mv ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak
 mv ~/.codex/skills/agent-skills ~/.codex/skills/agent-skills.bak
 mv ~/.claude/skills/config-yolo-mode ~/.claude/skills/config-yolo-mode.bak
 mv ~/.claude/skills/config-codex-tui-scrollback ~/.claude/skills/config-codex-tui-scrollback.bak
+mv ~/.claude/skills/config-auto-mode ~/.claude/skills/config-auto-mode.bak
 mv ~/.claude/skills/config-tmux-interaction ~/.claude/skills/config-tmux-interaction.bak
 ```
 
@@ -136,19 +140,19 @@ New-Item -ItemType Junction `
 
 ```bash
 codex debug prompt-input 'hi' \
-  | grep -oE 'file: [^)]*(config-yolo-mode|config-codex-tui-scrollback|config-tmux-interaction)/SKILL.md' \
+  | grep -oE 'file: [^)]*(config-yolo-mode|config-codex-tui-scrollback|config-auto-mode|config-tmux-interaction)/SKILL.md' \
   | sed 's/^file: //' \
   | sort -u
 ```
 
-预期能看到三个 `SKILL.md` 路径。
+预期能看到四个 `SKILL.md` 路径。
 
 ### Claude Code
 
 新开一个 Claude Code 会话，然后：
 
 ```text
-/skills      # 应看到三个 skill，名字与目录名一致
+/skills      # 应看到四个 skill，名字与目录名一致
 /memory      # 应看到 ~/.claude/CLAUDE.md
 ```
 
