@@ -67,3 +67,15 @@ Codex 和 Claude Code 共用的一份全局指令，只放跨项目、跨任务�
 - The global Git config also rewrites `https://github.com/` to
   `git@github.com:`, so normal `git push` / `git fetch` should use SSH
   automatically.
+
+## Skill 仓库
+
+跨项目复用的流程统一写成 skill，放在 agent-skills 仓库，不要散落在各个项目的
+memory 里。
+
+- 仓库位置按顺序取：环境变量 `AGENT_SKILLS_REPO`；`~/.config/agent-skills/repo`
+  文件的第一行；两者都没有就停下来问用户仓库放在哪，不要猜一个默认路径。
+- 跨工具的工程流程放 `code/<skill-name>/SKILL.md`，工具或场景专用的放
+  `setup/<tool>/<skill-name>/SKILL.md`。
+- 新增、改名或删除 skill 后，按仓库根目录 `AGENTS.md` 的约定更新 README，
+  并重建 Codex / Claude 的软链。

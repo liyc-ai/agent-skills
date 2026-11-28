@@ -28,7 +28,8 @@ setup/
 ## 全局指令
 
 `AGENTS.GLOBAL.md` 是全局指令的唯一副本，目前包括任务执行规范（验收标准、
-任务拆分、卡住时停下来提问）、中文表达、学术写作和 Git/GitHub 环境约定。
+任务拆分、卡住时停下来提问）、中文表达、学术写作、Git/GitHub 环境约定，以及
+skill 仓库位置和新增 skill 的放置约定。
 Codex 通过 `~/.codex/AGENTS.md` 读取，Claude Code 通过 `~/.claude/CLAUDE.md`
 读取；两条软链都指向这个文件，改一处两边都生效。
 
@@ -64,17 +65,23 @@ Claude Code 自动加载，只在本仓库生效。目前约定两件事：
 
 ## 安装
 
-先 clone 仓库，后面的命令都用这个路径：
+先把仓库 clone 到一个你自己选的位置，再把位置写进
+`~/.config/agent-skills/repo`。之后的安装命令和 agent 都从这个文件读路径，
+换机器或想把仓库挪到别处时，改这一行就行，不用动仓库里的任何文件：
 
 ```bash
-REPO="$HOME/Documents/Code/agent-skills"
-git clone https://github.com/liyc-ai/agent-skills.git "$REPO"
+REPO="$HOME/Documents/Code/agent-skills"   # 改成你想放的位置
+git clone git@github.com:liyc-ai/agent-skills.git "$REPO"
 
-# 也可以用 SSH
-# git clone git@github.com:liyc-ai/agent-skills.git "$REPO"
+mkdir -p ~/.config/agent-skills
+printf '%s\n' "$REPO" > ~/.config/agent-skills/repo
 ```
 
-后面的命令都假设 `REPO` 还在当前 shell 里。
+已经 clone 过的机器不用再 clone，只补最后两行。如果临时要用别的副本，可以设
+`AGENT_SKILLS_REPO`，它的优先级高于配置文件；平时不用设。
+
+下面的代码块都从配置文件读一次 `REPO`，复制粘贴时彼此独立，不依赖上一个
+shell 里还留着变量。
 
 如果目标位置已经有同名文件或软链，先备份再建链接：
 
@@ -96,6 +103,7 @@ Codex 会递归扫描 `~/.codex/skills` 下的 `SKILL.md`（已在 codex-cli 0.1
 验证），所以链接一次仓库根目录就够了：
 
 ```bash
+REPO="$(cat ~/.config/agent-skills/repo)"
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
 mkdir -p "$CODEX_DIR/skills"
 ln -s "$REPO" "$CODEX_DIR/skills/agent-skills"
@@ -105,6 +113,8 @@ ln -s "$REPO/AGENTS.GLOBAL.md" "$CODEX_DIR/AGENTS.md"
 如果想让 Codex 侧也保持和 Claude 一样的扁平结构，可以改成逐个软链：
 
 ```bash
+REPO="$(cat ~/.config/agent-skills/repo)"
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
 for f in "$REPO"/setup/*/*/SKILL.md "$REPO"/code/*/SKILL.md; do
   src=$(dirname "$f")
   ln -sfn "$src" "$CODEX_DIR/skills/$(basename "$src")"
@@ -119,6 +129,7 @@ Claude Code 只扫描 `~/.claude/skills/<skill-name>/SKILL.md` 这一层，**不
 本身会被正常跟随（Claude Code 2.1.332 验证）：
 
 ```bash
+REPO="$(cat ~/.config/agent-skills/repo)"
 CLAUDE_DIR="$HOME/.claude"
 mkdir -p "$CLAUDE_DIR/skills"
 for f in "$REPO"/setup/*/*/SKILL.md "$REPO"/code/*/SKILL.md; do
@@ -139,24 +150,38 @@ skills 的话，逐个软链就够了。
 Windows 用目录 junction。Codex 侧可以 junction 整个仓库：
 
 ```powershell
+$REPO = "$env:USERPROFILE\Documents\Code\agent-skills"   # 改成你想放的位置
+
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.config\agent-skills" | Out-Null
+Set-Content -Path "$env:USERPROFILE\.config\agent-skills\repo" -Value $REPO
+
 New-Item -ItemType Junction `
   -Path "$env:USERPROFILE\.codex\skills\agent-skills" `
-  -Target "$env:USERPROFILE\Documents\Code\agent-skills"
+  -Target $REPO
 ```
 
 Claude 侧不能 junction 整个仓库，需要给每个 skill 单独建 junction，例如：
 
 ```powershell
+$REPO = Get-Content "$env:USERPROFILE\.config\agent-skills\repo"
+
 New-Item -ItemType Junction `
   -Path "$env:USERPROFILE\.claude\skills\config-tmux-interaction" `
-  -Target "$env:USERPROFILE\Documents\Code\agent-skills\setup\tmux\config-tmux-interaction"
+  -Target "$REPO\setup\tmux\config-tmux-interaction"
 
 New-Item -ItemType Junction `
   -Path "$env:USERPROFILE\.claude\skills\full-repo-review" `
-  -Target "$env:USERPROFILE\Documents\Code\agent-skills\code\full-repo-review"
+  -Target "$REPO\code\full-repo-review"
 ```
 
 ## 验证安装
+
+先确认配置文件指向一个真实的仓库：
+
+```bash
+REPO="$(cat ~/.config/agent-skills/repo)"
+test -d "$REPO/.git" && echo "ok: $REPO" || echo "路径不对，改 ~/.config/agent-skills/repo"
+```
 
 ### Codex
 
@@ -184,6 +209,7 @@ codex debug prompt-input 'hi' \
 ## 更新
 
 ```bash
+REPO="$(cat ~/.config/agent-skills/repo)"
 git -C "$REPO" pull --ff-only
 ```
 
@@ -219,6 +245,8 @@ Claude Code 侧没有独立的裸 skill 校验命令，装好后用 `/skills` �
   `~/.claude/CLAUDE.md`，两者都指向 `AGENTS.GLOBAL.md`。
 - Cowork 桌面会话会跳过本身是软链的 `~/.claude/CLAUDE.md`；普通终端会话不受
   影响。
+- `~/.config/agent-skills/repo` 是仓库位置的唯一记录。没有这个文件时，agent
+  会先问仓库放在哪，不会猜 `~/Documents/Code/agent-skills`。
 - 删除软链不会删除仓库：
 
   ```bash
