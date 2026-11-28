@@ -3,21 +3,26 @@ name: config-tmux-interaction
 description: >-
   用 oh-my-tmux（gpakosz/.tmux）搭好 tmux 基础配置，并在 .tmux.conf.local
   中补齐新窗口命名、鼠标/触摸板滚动、选中内容复制到系统剪贴板、Codex TUI
-  误触选中防护；排查多行复制失败、历史不足、TUI 误选等问题。Use when
-  installing or customizing oh-my-tmux (gpakosz/.tmux), setting up tmux
-  mouse/copy behavior, 新建窗口自动提示重命名, 选中即复制, 误点输入框被
-  选中/剪贴板被覆盖, or debugging tmux scrollback and copy-mode. Codex TUI
-  自身的 transcript/alternate-screen 问题见
+  误触选中防护；排查多行复制失败、历史不足、TUI 误选等问题。还包括 Claude
+  Code 全屏渲染器（fullscreen / alternate screen）导致 tmux 里翻不到历史
+  时怎么切回 classic、怎么在 fullscreen 下回看。Use when installing or
+  customizing oh-my-tmux (gpakosz/.tmux), setting up tmux mouse/copy
+  behavior, 新建窗口自动提示重命名, 选中即复制, 误点输入框被选中/剪贴板
+  被覆盖, debugging tmux scrollback and copy-mode, or Claude Code 在 tmux
+  里往上翻看不到对话记录 / 历史像被截断 (fullscreen renderer, /tui
+  classic, CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN). Codex TUI 自身的
+  transcript/alternate-screen 问题见
   setup/codex/config-codex-tui-scrollback。
 metadata:
-  short-description: oh-my-tmux 安装与窗口/滚动/复制
+  short-description: oh-my-tmux 安装与窗口/滚动/复制、TUI 回滚
 ---
 
 # tmux 交互配置（oh-my-tmux 底座）
 
 目标：用 [oh-my-tmux](https://github.com/gpakosz/.tmux) 作为基础配置，再在
 `~/.tmux.conf.local` 中补齐交互层：新窗口命名、鼠标/触摸板滚动、复制到系统
-剪贴板、Codex TUI 误触保护。
+剪贴板、Codex TUI 误触保护。另外也覆盖 Claude Code 和 Codex 这类全屏 TUI
+在 tmux 里看不到历史的排查。
 
 已在 tmux 3.8 + oh-my-tmux master（`58a3dcc`）+ macOS `pbcopy` 上验证。
 Linux 把 `pbcopy` 换成 `xclip -selection clipboard` 或 `wl-copy`。
@@ -66,12 +71,17 @@ tmux show-options -gv mouse
 tmux show-options -gv history-limit
 tmux show-options -gv mode-keys
 tmux list-panes -a -F \
-  'pane=#{pane_id} cmd=#{pane_current_command} alt=#{alternate_on} hist=#{history_size}/#{history_limit}'
+  'pane=#{pane_id} cmd=#{pane_current_command} alt=#{alternate_on} mouse_any=#{mouse_any_flag} hist=#{history_size}/#{history_limit}'
 ```
 
-`alt=1` 表示当前 pane 运行在 alternate screen（例如 Codex TUI）。这种应用的
-内容不会进入 tmux scrollback，调大 `history-limit` 也看不到；先看
-[Codex TUI 回滚配置](../../codex/config-codex-tui-scrollback/SKILL.md)。
+`alt=1` 表示当前 pane 运行在 alternate screen：Codex TUI（开了 alternate
+screen 时）和 Claude Code 的 fullscreen 渲染器都会这样。这种应用的内容不会
+进入 tmux scrollback，调大 `history-limit` 也看不到。Codex 看
+[Codex TUI 回滚配置](../../codex/config-codex-tui-scrollback/SKILL.md)，Claude
+Code 看下面的[全屏渲染器一节](#claude-code-全屏渲染器吃掉-scrollback)。
+
+`mouse_any=1` 说明应用抓了鼠标，滚轮事件会交给应用而不是 tmux；`hist` 一直
+停在个位数、`alt=1` 同时出现，基本就是全屏应用在重绘，不是 tmux 历史太小。
 
 ## 在 .tmux.conf.local 末尾追加
 
@@ -195,6 +205,103 @@ Codex 的输入框和状态栏一般就落在这几行，具体数字可以按�
 底部输入框那一小块不再响应鼠标。如果确实要从输入框那一行开始选，先滚轮
 上翻一格（或 `prefix + [`）进入 copy-mode，之后拖选完全正常。
 
+## Claude Code 全屏渲染器吃掉 scrollback
+
+Claude Code 2.x 有两套渲染器，scrollback 行为完全相反：
+
+- `classic`（`/tui default`，2.1.327 起也可以用 `/tui classic`）：画在主屏，
+  对话正常进入终端和 tmux 的 scrollback，`Cmd+F`、`prefix + [` 都能翻到。
+- `fullscreen`（`/tui fullscreen`，文档里叫 flicker-free rendering）：像
+  vim/htop 一样接管 alternate screen。内容只存在于应用自己的视口里，不进
+  scrollback，`history-limit` 调多大都没用；退出后终端恢复主屏，整段对话
+  也不会留在历史里。
+
+典型症状：对话输出一长，往上翻就什么都没有，像被截断。其实不是截断，是
+这些行从来没写进 tmux 的历史缓冲。
+
+先确认是哪种：
+
+```bash
+tmux list-panes -a -F \
+  'pane=#{pane_id} cmd=#{pane_current_command} alt=#{alternate_on} mouse_any=#{mouse_any_flag} hist=#{history_size}'
+```
+
+`cmd` 是 claude、`alt=1`、`hist` 只有个位数，就是 fullscreen。更直接的办法
+是在会话里敲 `/tui`（不带参数），它会打印当前 renderer。
+
+### 为什么会莫名变成 fullscreen
+
+默认值不是固定的，和安装时间、版本、以及环境是否走 Anthropic 的特性开关
+都有关系，部分新装用户会被默认切到 fullscreen。另外 `claude attach` 和
+agent view 启动的后台会话永远是 fullscreen，什么开关都关不掉。
+
+所以同一台机器、同一份 settings，不同 pane 的 `alt` 不一样很正常：每个
+会话用启动时的 renderer，后来改设置不影响已经跑起来的。
+
+### 切回主屏
+
+在会话里：
+
+```text
+/tui default
+```
+
+`/tui classic` 是同一个意思。想全局固定，在 `~/.claude/settings.json` 里写：
+
+```json
+{ "tui": "default" }
+```
+
+`tui` 只接受 `default` 和 `fullscreen` 两个值，不设就是 `default`。如果
+设置不生效，或者想强制压过别的开关：
+
+```bash
+export CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1
+```
+
+它的优先级最高，压过 `CLAUDE_CODE_NO_FLICKER` 和 `tui` 设置；
+`CLAUDE_CODE_NO_FLICKER=0` 也能关 fullscreen，但优先级低于 DISABLE。只想
+临时试一次，写在启动命令前面即可：
+
+```bash
+CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 claude
+```
+
+也可以写进 `~/.claude/settings.json` 的 `env` 块，和别的环境变量一起管：
+
+```json
+{ "env": { "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN": "1" } }
+```
+
+改设置只对新会话生效。已经在跑的会话要 `/tui default` 或者重开；这就是
+“settings 里明明写了 default、某个老 pane 还是 `alt=1`”的常见原因。
+
+### 留在 fullscreen 时怎么回看
+
+- 会话内滚动：`PgUp` / `PgDn` 半屏，`Ctrl+Home` 到顶，`Ctrl+End` 回到最新
+  并恢复跟随；滚轮逐行，速度用 `CLAUDE_CODE_SCROLL_SPEED` 调（上限 20）。
+  Mac 笔记本没有 PgUp 键，用 `Fn + ↑/↓`。
+- `Ctrl+O` 打开 transcript viewer，两套渲染器都有。里面是 less 那套键位：
+  `/` 搜索、`n` / `N` 跳匹配、`g` / `G` 到顶/底、`{` / `}` 跳上一条/下一
+  条用户消息、`Ctrl+U` / `Ctrl+D` 半页、`v` 用 `$EDITOR` 打开、`q` / `Esc`
+  退出。`Ctrl+E` 切换是否展开被折叠的工具输出。
+- 关键一步：在 transcript viewer 里按 `[`，会把整段对话（工具输出全部
+  展开）写进终端原生 scrollback。之后即使退出 viewer，也能用
+  `prefix + [` 和 `Cmd+F` 翻和搜。这是 fullscreen 模式下把历史塞回 tmux
+  的唯一入口，不按就一直看不到。
+- `/export [文件名]` 导出纯文本，`/copy [N]` 复制倒数第 N 条回复。会话原文
+  一直在 `~/.claude/projects/` 下的 jsonl 里，实在找不到就直接读它。
+
+### tmux 侧的细节
+
+- fullscreen 会自己接管鼠标（`mouse_any_flag=1`），滚轮事件直接交给
+  Claude；这时候 tmux copy-mode 里反而是空的。想用 tmux 翻历史，先按上面
+  的 `[`，或者切回 classic。
+- 其他 pane 处于活动状态时，滚轮只滚 tmux 自己的历史，所以
+  `set -g mouse on` 要开着（tmux 3.8 默认就开，旧版本手动加）。
+- tmux ≤ 3.6 没有 synchronized output，fullscreen 重绘会闪；3.7+ 正常。
+  `tmux -CC`（iTerm2 原生集成）和 fullscreen 不兼容。
+
 ## 多行复制排查
 
 多行复制本身是支持的；失败通常不是 tmux 的 `copy-pipe` 问题。
@@ -244,6 +351,10 @@ tmux list-keys -T copy-mode-vi y
 tmux list-keys -T copy-mode-vi MouseDragEnd1Pane
 tmux list-keys -T root MouseDrag1Pane
 
+# Claude Code：在会话里敲 /tui 看 renderer；fullscreen 的 pane 上面 alt=1、hist 很小
+tmux list-panes -a -F \
+  'pane=#{pane_id} cmd=#{pane_current_command} alt=#{alternate_on} hist=#{history_size}'
+
 # 手动测试：选中两行以上，松开在 pane 内，然后运行
 pbpaste
 ```
@@ -260,6 +371,10 @@ oh-my-tmux 安装状态、相关选项、绑定和 pane 的 `alt/history` 状态
   `#!important`；需要时合并成一行。
 - `history-limit`、`default-terminal` 等设置只对新建 pane 生效；已存在的
   pane 不会因为重载而扩容，需新建窗口/pane 或重启 server。
+- Claude Code 的 `tui` 设置和 `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN` 同样
+  只影响新启动的会话；改之前已经跑着的会话仍然用原来的 renderer，需要
+  `/tui default` 或重开。`claude attach` / agent view 的后台会话不受这些
+  开关影响，永远是 fullscreen。
 - `mode-keys vi` 必须设置，否则 oh-my-tmux 的 `copy-mode-vi` 键位是死代码。
 - `tmux_conf_copy_to_os_clipboard` 等变量在配置加载时求值；改完必须
   `<prefix> r`（或 `tmux source-file ~/.tmux.conf`）。

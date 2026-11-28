@@ -91,6 +91,16 @@ tmux list-panes -a -F \
 	'pane=#{pane_id} win=#{window_index}:#{window_name} cmd=#{pane_current_command} alt=#{alternate_on} mouse_any=#{mouse_any_flag} hist=#{history_size}/#{history_limit}' \
 	2>/dev/null || true
 
+if [ "$server_running" -eq 1 ]; then
+	alt_claude=$(tmux list-panes -a -F '#{pane_current_command} #{alternate_on}' 2>/dev/null |
+		awk '$1 ~ /claude/ && $2 == 1 { n++ } END { print n + 0 }')
+	if [ "${alt_claude:-0}" -gt 0 ]; then
+		echo "note: $alt_claude claude pane(s) are on the alternate screen (fullscreen renderer);"
+		echo "      their output is not in tmux scrollback. Run /tui default there,"
+		echo "      or use Ctrl+O then [ to write the transcript into the scrollback."
+	fi
+fi
+
 echo
 if command -v pbcopy >/dev/null 2>&1; then
 	echo "pbcopy: $(command -v pbcopy)"
@@ -110,5 +120,9 @@ Manual checks:
   5) in a codex pane (mouse_any=0), drag/double-click in the transcript must
      select normally; only the bottom 5 rows are ignored. Wheel up first if
      the selection has to start in the bottom rows.
-  6) prefix + maximizes the current pane to its own window; prefix + ? lists keys.
+  6) in a claude pane, run /tui to print the renderer. fullscreen (alt=1) keeps
+     the conversation out of tmux scrollback; /tui default switches it back.
+     in fullscreen, Ctrl+O then [ writes the whole transcript into the terminal
+     scrollback, where prefix + [ and Cmd+F can find it.
+  7) prefix + maximizes the current pane to its own window; prefix + ? lists keys.
 EOF
