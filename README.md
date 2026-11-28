@@ -1,13 +1,15 @@
 # agent-skills
 
 我维护的个人 skills 集合，Codex CLI 和 Claude Code 共用。每个 skill 都是一个
-独立的 `SKILL.md` 目录，按工具和场景分层放置。
+独立的 `SKILL.md` 目录，按用途分层放置。
 
 ## 目录结构
 
 ```text
 AGENTS.GLOBAL.md                # 全局指令，Codex/Claude 共用一份
 AGENTS.md                       # 仓库级指令，修改本仓库时的提交与 README 同步约定
+code/
+└── full-repo-review/           # 跨工具的工程流程 skill
 setup/
 ├── claude/
 │   └── config-auto-mode/
@@ -18,9 +20,10 @@ setup/
     └── config-tmux-interaction/   # 场景目录，两个客户端通用
 ```
 
+`code/<skill-name>/SKILL.md` 放跨工具的工程流程 skill；
 `setup/<tool>/<skill-name>/SKILL.md` 放工具专用的 skill；
-`setup/<scenario>/<skill-name>/SKILL.md` 放跨工具的场景化 skill。两者都用通用
-的 `SKILL.md` 格式，所以同一份文件可以被 Codex 和 Claude Code 加载。
+`setup/<scenario>/<skill-name>/SKILL.md` 放跨工具的场景化配置 skill。它们都用
+通用的 `SKILL.md` 格式，所以同一份文件可以被 Codex 和 Claude Code 加载。
 
 ## 全局指令
 
@@ -54,9 +57,10 @@ Claude Code 自动加载，只在本仓库生效。目前约定两件事：
 | `config-codex-tui-scrollback` | [setup/codex/config-codex-tui-scrollback](setup/codex/config-codex-tui-scrollback/SKILL.md) | Codex | 解决 Codex TUI 在 tmux 中无法回看长会话的问题：`Ctrl+T` transcript pager 或 `alternate_screen = "never"`。 |
 | `config-auto-mode` | [setup/claude/config-auto-mode](setup/claude/config-auto-mode/SKILL.md) | Claude Code | 把 Claude Code 默认权限模式改为 auto mode（分类器逐个判断），或恢复/校验默认模式。 |
 | `config-tmux-interaction` | [setup/tmux/config-tmux-interaction](setup/tmux/config-tmux-interaction/SKILL.md) | Codex / Claude Code | 安装/升级 oh-my-tmux，补齐新窗口命名、鼠标滚动、剪贴板复制与 TUI 误触防护；排查 Claude Code fullscreen 渲染器导致 tmux 翻不到历史（`/tui default`、`Ctrl+O` + `[`）。 |
+| `full-repo-review` | [code/full-repo-review](code/full-repo-review/SKILL.md) | Codex / Claude Code | 全仓库审查：建立基线，按契约和分层清单找真实 bug，用测试复现后小批量修复，并核对文档、示例和依赖是否完备。 |
 
-格式对两个工具都通用；前两个 Codex skill 和 `config-auto-mode` 的内容本身是
-各自工具专用的。
+格式对两个工具都通用；`setup` 下的 skill 各自面向具体工具或配置场景，
+`code/full-repo-review` 则是跨工具的代码审查流程。
 
 ## 安装
 
@@ -83,6 +87,7 @@ mv ~/.claude/skills/config-yolo-mode ~/.claude/skills/config-yolo-mode.bak
 mv ~/.claude/skills/config-codex-tui-scrollback ~/.claude/skills/config-codex-tui-scrollback.bak
 mv ~/.claude/skills/config-auto-mode ~/.claude/skills/config-auto-mode.bak
 mv ~/.claude/skills/config-tmux-interaction ~/.claude/skills/config-tmux-interaction.bak
+mv ~/.claude/skills/full-repo-review ~/.claude/skills/full-repo-review.bak
 ```
 
 ### Codex CLI
@@ -100,7 +105,7 @@ ln -s "$REPO/AGENTS.GLOBAL.md" "$CODEX_DIR/AGENTS.md"
 如果想让 Codex 侧也保持和 Claude 一样的扁平结构，可以改成逐个软链：
 
 ```bash
-for f in "$REPO"/setup/*/*/SKILL.md; do
+for f in "$REPO"/setup/*/*/SKILL.md "$REPO"/code/*/SKILL.md; do
   src=$(dirname "$f")
   ln -sfn "$src" "$CODEX_DIR/skills/$(basename "$src")"
 done
@@ -116,7 +121,7 @@ Claude Code 只扫描 `~/.claude/skills/<skill-name>/SKILL.md` 这一层，**不
 ```bash
 CLAUDE_DIR="$HOME/.claude"
 mkdir -p "$CLAUDE_DIR/skills"
-for f in "$REPO"/setup/*/*/SKILL.md; do
+for f in "$REPO"/setup/*/*/SKILL.md "$REPO"/code/*/SKILL.md; do
   src=$(dirname "$f")
   ln -sfn "$src" "$CLAUDE_DIR/skills/$(basename "$src")"
 done
@@ -145,6 +150,10 @@ Claude 侧不能 junction 整个仓库，需要给每个 skill 单独建 junctio
 New-Item -ItemType Junction `
   -Path "$env:USERPROFILE\.claude\skills\config-tmux-interaction" `
   -Target "$env:USERPROFILE\Documents\Code\agent-skills\setup\tmux\config-tmux-interaction"
+
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.claude\skills\full-repo-review" `
+  -Target "$env:USERPROFILE\Documents\Code\agent-skills\code\full-repo-review"
 ```
 
 ## 验证安装
@@ -153,19 +162,19 @@ New-Item -ItemType Junction `
 
 ```bash
 codex debug prompt-input 'hi' \
-  | grep -oE 'file: [^)]*(config-yolo-mode|config-codex-tui-scrollback|config-auto-mode|config-tmux-interaction)/SKILL.md' \
+  | grep -oE 'file: [^)]*(config-yolo-mode|config-codex-tui-scrollback|config-auto-mode|config-tmux-interaction|full-repo-review)/SKILL.md' \
   | sed 's/^file: //' \
   | sort -u
 ```
 
-预期能看到四个 `SKILL.md` 路径。
+预期能看到五个 `SKILL.md` 路径。
 
 ### Claude Code
 
 新开一个 Claude Code 会话，然后：
 
 ```text
-/skills      # 应看到四个 skill，名字与目录名一致
+/skills      # 应看到五个 skill，名字与目录名一致
 /memory      # 应看到 ~/.claude/CLAUDE.md
 ```
 
@@ -184,7 +193,8 @@ git -C "$REPO" pull --ff-only
 
 ## 新增 skill 约定
 
-1. 工具专用 skill 放 `setup/<tool>/<skill-name>/`，跨工具 skill 放
+1. 跨工具的工程流程 skill 放 `code/<skill-name>/`；工具专用 skill 放
+   `setup/<tool>/<skill-name>/`，跨工具的场景化配置 skill 放
    `setup/<scenario>/<skill-name>/`。
 2. `SKILL.md` 的 frontmatter `name` 与目录名保持一致，并确保全局唯一；
    `description` 写清楚触发场景。
@@ -193,7 +203,7 @@ git -C "$REPO" pull --ff-only
 
 ```bash
 python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" \
-  "setup/<tool>/<skill-name>"
+  "code/<skill-name>"
 ```
 
 Claude Code 侧没有独立的裸 skill 校验命令，装好后用 `/skills` 看是否被发现
