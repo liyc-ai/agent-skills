@@ -12,10 +12,13 @@ code/
 └── full-repo-review/           # 跨工具的工程流程 skill
 setup/
 ├── claude/
-│   └── config-auto-mode/
+│   ├── config-auto-mode/
+│   └── config-claude-transcripts/
 ├── codex/
 │   ├── config-yolo-mode/
 │   └── config-codex-tui-scrollback/
+├── macos/
+│   └── config-vscode-clash-proxy/
 └── tmux/
     └── config-tmux-interaction/   # 场景目录，两个客户端通用
 ```
@@ -57,6 +60,8 @@ Claude Code 自动加载，只在本仓库生效。目前约定两件事：
 | `config-yolo-mode` | [setup/codex/config-yolo-mode](setup/codex/config-yolo-mode/SKILL.md) | Codex | 把 Codex 默认权限设为全权限（YOLO mode），或恢复/缩小权限并校验实际生效值。 |
 | `config-codex-tui-scrollback` | [setup/codex/config-codex-tui-scrollback](setup/codex/config-codex-tui-scrollback/SKILL.md) | Codex | 解决 Codex TUI 在 tmux 中无法回看长会话的问题：`Ctrl+T` transcript pager 或 `alternate_screen = "never"`。 |
 | `config-auto-mode` | [setup/claude/config-auto-mode](setup/claude/config-auto-mode/SKILL.md) | Claude Code | 把 Claude Code 默认权限模式改为 auto mode（分类器逐个判断），或恢复/校验默认模式。 |
+| `config-claude-transcripts` | [setup/claude/config-claude-transcripts](setup/claude/config-claude-transcripts/SKILL.md) | Claude Code | 会话记录的位置、保留天数、`--resume` / `/export`，以及从 jsonl 批量提取提问和回答。 |
+| `config-vscode-clash-proxy` | [setup/macos/config-vscode-clash-proxy](setup/macos/config-vscode-clash-proxy/SKILL.md) | macOS | 诊断 VS Code 插件下载慢是否被 Clash 规则放回直连，用增强规则和 `http.proxy` 让 marketplace/CDN 走代理。 |
 | `config-tmux-interaction` | [setup/tmux/config-tmux-interaction](setup/tmux/config-tmux-interaction/SKILL.md) | Codex / Claude Code | 安装/升级 oh-my-tmux，补齐新窗口命名、鼠标滚动、剪贴板复制、状态栏当前目录与 TUI 误触防护；排查 Claude Code fullscreen 渲染器导致 tmux 翻不到历史（`/tui default`、`Ctrl+O` + `[`）。 |
 | `full-repo-review` | [code/full-repo-review](code/full-repo-review/SKILL.md) | Codex / Claude Code | 全仓库审查：建立基线，按契约和分层清单找真实 bug，用测试复现后小批量修复，并核对文档、示例和依赖是否完备。 |
 
@@ -93,6 +98,8 @@ mv ~/.codex/skills/agent-skills ~/.codex/skills/agent-skills.bak
 mv ~/.claude/skills/config-yolo-mode ~/.claude/skills/config-yolo-mode.bak
 mv ~/.claude/skills/config-codex-tui-scrollback ~/.claude/skills/config-codex-tui-scrollback.bak
 mv ~/.claude/skills/config-auto-mode ~/.claude/skills/config-auto-mode.bak
+mv ~/.claude/skills/config-claude-transcripts ~/.claude/skills/config-claude-transcripts.bak
+mv ~/.claude/skills/config-vscode-clash-proxy ~/.claude/skills/config-vscode-clash-proxy.bak
 mv ~/.claude/skills/config-tmux-interaction ~/.claude/skills/config-tmux-interaction.bak
 mv ~/.claude/skills/full-repo-review ~/.claude/skills/full-repo-review.bak
 ```
@@ -187,19 +194,19 @@ test -d "$REPO/.git" && echo "ok: $REPO" || echo "路径不对，改 ~/.config/a
 
 ```bash
 codex debug prompt-input 'hi' \
-  | grep -oE 'file: [^)]*(config-yolo-mode|config-codex-tui-scrollback|config-auto-mode|config-tmux-interaction|full-repo-review)/SKILL.md' \
+  | grep -oE 'file: [^)]*(config-yolo-mode|config-codex-tui-scrollback|config-auto-mode|config-claude-transcripts|config-vscode-clash-proxy|config-tmux-interaction|full-repo-review)/SKILL.md' \
   | sed 's/^file: //' \
   | sort -u
 ```
 
-预期能看到五个 `SKILL.md` 路径。
+预期能看到七个 `SKILL.md` 路径。
 
 ### Claude Code
 
 新开一个 Claude Code 会话，然后：
 
 ```text
-/skills      # 应看到五个 skill，名字与目录名一致
+/skills      # 应看到七个 skill，名字与目录名一致
 /memory      # 应看到 ~/.claude/CLAUDE.md
 ```
 
