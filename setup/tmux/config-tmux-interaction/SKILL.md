@@ -2,27 +2,28 @@
 name: config-tmux-interaction
 description: >-
   用 oh-my-tmux（gpakosz/.tmux）搭好 tmux 基础配置，并在 .tmux.conf.local
-  中补齐新窗口命名、鼠标/触摸板滚动、选中内容复制到系统剪贴板、Codex TUI
-  误触选中防护；排查多行复制失败、历史不足、TUI 误选等问题。还包括 Claude
-  Code 全屏渲染器（fullscreen / alternate screen）导致 tmux 里翻不到历史
-  时怎么切回 classic、怎么在 fullscreen 下回看。Use when installing or
-  customizing oh-my-tmux (gpakosz/.tmux), setting up tmux mouse/copy
-  behavior, 新建窗口自动提示重命名, 选中即复制, 误点输入框被选中/剪贴板
-  被覆盖, debugging tmux scrollback and copy-mode, or Claude Code 在 tmux
-  里往上翻看不到对话记录 / 历史像被截断 (fullscreen renderer, /tui
-  classic, CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN). Codex TUI 自身的
+  中补齐新窗口命名、鼠标/触摸板滚动、选中内容复制到系统剪贴板、状态栏右下
+  角显示当前目录、Codex TUI 误触选中防护；排查多行复制失败、历史不足、
+  TUI 误选等问题。还包括 Claude Code 全屏渲染器（fullscreen / alternate
+  screen）导致 tmux 里翻不到历史时怎么切回 classic、怎么在 fullscreen 下
+  回看。Use when installing or customizing oh-my-tmux (gpakosz/.tmux),
+  setting up tmux mouse/copy behavior, 新建窗口自动提示重命名, 选中即复制,
+  误点输入框被选中/剪贴板被覆盖, status-right 改成显示当前工作目录,
+  debugging tmux scrollback and copy-mode, or Claude Code 在 tmux 里往上翻
+  看不到对话记录 / 历史像被截断 (fullscreen renderer, /tui classic,
+  CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN). Codex TUI 自身的
   transcript/alternate-screen 问题见
   setup/codex/config-codex-tui-scrollback。
 metadata:
-  short-description: oh-my-tmux 安装与窗口/滚动/复制、TUI 回滚
+  short-description: oh-my-tmux 安装与窗口/滚动/复制、状态栏、TUI 回滚
 ---
 
 # tmux 交互配置（oh-my-tmux 底座）
 
 目标：用 [oh-my-tmux](https://github.com/gpakosz/.tmux) 作为基础配置，再在
 `~/.tmux.conf.local` 中补齐交互层：新窗口命名、鼠标/触摸板滚动、复制到系统
-剪贴板、Codex TUI 误触保护。另外也覆盖 Claude Code 和 Codex 这类全屏 TUI
-在 tmux 里看不到历史的排查。
+剪贴板、状态栏当前目录、Codex TUI 误触保护。另外也覆盖 Claude Code 和
+Codex 这类全屏 TUI 在 tmux 里看不到历史的排查。
 
 已在 tmux 3.8 + oh-my-tmux master（`58a3dcc`）+ macOS `pbcopy` 上验证。
 Linux 把 `pbcopy` 换成 `xclip -selection clipboard` 或 `wl-copy`。
@@ -112,7 +113,10 @@ bind c new-window \; \
 	command-prompt -p "窗口名称:" -I "#{b:pane_current_path}" \
 	"rename-window -- '%%'"
 
-# 5. Codex 等 TUI 底部 5 行不响应拖拽/双击，见下一节
+# 5. 状态栏：右下角只显示当前 pane 的工作目录，见下一节
+tmux_conf_theme_status_right=" #{pretty_pane_current_path} "
+
+# 6. Codex 等 TUI 底部 5 行不响应拖拽/双击，见下一节
 ```
 
 几个容易踩的点：
@@ -130,6 +134,41 @@ bind c new-window \; \
   （旧版本），加 `set -g mouse on`，或运行时 `<prefix> m` 切换。
 - `default-terminal` 不用手写：oh-my-tmux 在 macOS 上会探测 terminfo，
   自动把 `screen-256color` 升级成 `tmux-256color`。
+- `#{pretty_pane_current_path}` 会把家目录缩成 `~`，路径超过
+  `client_width/5`（131 列时约 26 字符）时从中间省略，保留开头和最后一级
+  目录；想显示完整路径就换成 `#{pane_current_path}`，想保留 prefix 提示就
+  写成 `" #{prefix}#{pretty_pane_current_path} "`。改完要 `<prefix> r` 重载。
+
+## 状态栏显示当前目录
+
+oh-my-tmux 默认的 `status-right` 是电池、时间、日期、用户名、主机名这一串。
+只想要当前目录时，在 local 里覆盖 `tmux_conf_theme_status_right`：
+
+```tmux
+tmux_conf_theme_status_right=" #{pretty_pane_current_path} "
+```
+
+`#{pretty_pane_current_path}` 是 oh-my-tmux 自带的格式，底层用 `#(...)` 调
+perl，把家目录缩成 `~`，路径过长时中间省略成 `~/Documents/.../agent-skills`，
+比 tmux 内置的 `#{pane_current_path}` 更适合放状态栏。它随状态栏一起刷新，
+`cd` 之后最多滞后一个 `status-interval`（默认 10 秒），按 `<prefix> r` 会
+立刻重算。
+
+想保留按 prefix 时的 `⌨` 提示：
+
+```tmux
+tmux_conf_theme_status_right=" #{prefix}#{pretty_pane_current_path} "
+```
+
+想看完整绝对路径、不缩写也不省略：
+
+```tmux
+tmux_conf_theme_status_right=" #{pane_current_path} "
+```
+
+完整路径特别长时会向左挤占窗口列表；`status-right-length` 已由 oh-my-tmux
+设为 1000，一般不用动。状态栏左侧的会话名和运行时间由
+`tmux_conf_theme_status_left` 控制，不受这里影响。
 
 ## 键位速查
 
@@ -344,6 +383,7 @@ tmux show-options -gv mouse
 tmux show-options -gv mode-keys
 tmux show-options -gv history-limit
 tmux show-options -gv prefix2
+tmux show-options -gv status-right   # 应包含 pane_current_path
 
 tmux list-keys -T prefix c
 tmux list-keys -T copy-mode-vi Enter

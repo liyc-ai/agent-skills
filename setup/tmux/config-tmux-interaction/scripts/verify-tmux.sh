@@ -40,7 +40,7 @@ else
 fi
 if [ -f "$local_conf" ]; then
 	printf 'local: %s\n' "$local_conf"
-	grep -nE '^[[:space:]]*tmux_conf_(copy_to_os_clipboard|new_window_retain_current_path|preserve_stock_bindings)=' \
+	grep -nE '^[[:space:]]*tmux_conf_(copy_to_os_clipboard|new_window_retain_current_path|preserve_stock_bindings|theme_status_right)=' \
 		"$local_conf" 2>/dev/null || true
 else
 	echo "local: $local_conf not found"
@@ -61,6 +61,14 @@ if [ "$server_running" -eq 1 ]; then
 	done
 else
 	echo "tmux server not running; start tmux to inspect live options"
+fi
+
+if [ "$server_running" -eq 1 ]; then
+	status_right=$(tmux show-options -gv status-right 2>/dev/null || true)
+	case "$status_right" in
+		*pane_current_path*) echo "status-right: shows the current pane path" ;;
+		*) echo "status-right: current pane path not configured" ;;
+	esac
 fi
 
 echo
@@ -125,4 +133,6 @@ Manual checks:
      in fullscreen, Ctrl+O then [ writes the whole transcript into the terminal
      scrollback, where prefix + [ and Cmd+F can find it.
   7) prefix + maximizes the current pane to its own window; prefix + ? lists keys.
+  8) status bar bottom-right shows the current pane's directory. cd into
+     another directory and wait one status-interval (10s) for it to update.
 EOF

@@ -69,6 +69,22 @@ bind c new-window \; \
 
 
 # ------------------------------------------------------------------
+# 状态栏：右下角显示当前目录
+# ------------------------------------------------------------------
+
+# 覆盖 oh-my-tmux 默认的电池 / 时间 / 日期 / 用户名 / 主机名。
+# 家目录缩成 ~，路径超过 client_width/5 时从中间省略，
+# 例如 ~/Documents/.../agent-skills。
+tmux_conf_theme_status_right=" #{pretty_pane_current_path} "
+
+# 想保留按 prefix 时的 ⌨ 提示：
+#tmux_conf_theme_status_right=" #{prefix}#{pretty_pane_current_path} "
+
+# 想显示完整绝对路径、不缩写不省略：
+#tmux_conf_theme_status_right=" #{pane_current_path} "
+
+
+# ------------------------------------------------------------------
 # Codex 等 inline TUI 的误触保护
 # ------------------------------------------------------------------
 # Codex 不接管鼠标，点输入框时误拖/双击会被 tmux 当成选区并直接
